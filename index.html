@@ -1,19 +1,15 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="fa">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>تابلوی زنده</title>
 
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    html, body {
+    body {
       margin: 0;
-      width: 100%;
-      height: 100%;
       overflow: hidden;
       font-family: sans-serif;
     }
@@ -23,40 +19,26 @@
       inset: 0;
       z-index: 10;
       display: flex;
+      align-items: center;
       justify-content: center;
-      align-items: center;
-      background: #24bde8;
-      color: white;
-      text-align: center;
+      background: #111;
     }
 
-    #startBox {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-    }
-
-    #startBtn {
-      border: 0;
-      border-radius: 12px;
-      padding: 14px 28px;
+    #start button,
+    #sound button {
+      border: none;
+      border-radius: 14px;
+      padding: 15px 25px;
       font-size: 18px;
-      background: white;
-      color: #168aad;
     }
 
-    #hint {
+    #sound {
       position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 5;
-      background: rgba(0,0,0,.65);
-      color: white;
-      padding: 10px 14px;
-      border-radius: 10px;
-      font-size: 14px;
+      bottom: 30px;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      text-align: center;
       display: none;
     }
   </style>
@@ -65,26 +47,17 @@
 <body>
 
   <div id="start">
-    <div id="startBox">
-      <h2>تابلوی زنده</h2>
-      <p>برای شروع، اجازه دسترسی به دوربین را بده.</p>
-      <button id="startBtn">شروع AR</button>
-    </div>
+    <button id="startBtn">شروع AR</button>
   </div>
 
-  <div id="hint">
-    دوربین را روی عکس چاپ‌شده نگه دار.
+  <div id="sound">
+    <button id="soundBtn">🔊 پخش صدا</button>
   </div>
 
   <a-scene
-    mindar-image="
-      imageTargetSrc: ./targets.mind;
-      autoStart: false;
-      uiScanning: yes;
-      uiLoading: yes;
-    "
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: yes; uiError: yes"
     color-space="sRGB"
-    renderer="colorManagement: true, physicallyCorrectLights"
+    renderer="colorManagement: true, physicallyCorrectLights: true"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
 
@@ -95,23 +68,22 @@
         preload="auto"
         playsinline
         webkit-playsinline
-        muted
-        crossorigin="anonymous">
+        muted>
       </video>
     </a-assets>
 
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
     <a-entity mindar-image-target="targetIndex: 0">
 
-      <a-video
-        src="#video"
+      <a-plane
         width="1"
-        height="0.7"
-        position="0 0 0">
-      </a-video>
+        height="0.5625"
+        position="0 0 0"
+        material="shader: flat; src: #video; side: double">
+      </a-plane>
 
     </a-entity>
-
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
   </a-scene>
 
@@ -119,35 +91,63 @@
     const scene = document.querySelector("a-scene");
     const video = document.querySelector("#video");
     const start = document.querySelector("#start");
-    const button = document.querySelector("#startBtn");
-    const hint = document.querySelector("#hint");
+    const startBtn = document.querySelector("#startBtn");
+    const sound = document.querySelector("#sound");
+    const soundBtn = document.querySelector("#soundBtn");
 
-    button.addEventListener("click", async () => {
+    startBtn.addEventListener("click", async () => {
+
+      video.muted = true;
+      video.playsInline = true;
+
+      video.load();
+
+      // اجازه پخش ویدئو را با لمس کاربر فعال می‌کنیم
+      try {
+        await video.play();
+        video.pause();
+        video.currentTime = 0;
+      } catch (e) {
+        console.log("video unlock:", e);
+      }
+
       start.style.display = "none";
-      hint.style.display = "block";
 
       const arSystem = scene.systems["mindar-image-system"];
 
-      try {
-        await arSystem.start();
-      } catch (error) {
-        console.error(error);
-        start.style.display = "flex";
-        alert("دسترسی به دوربین یا شروع AR انجام نشد.");
+      if (arSystem) {
+        arSystem.start();
       }
     });
 
     scene.addEventListener("targetFound", async () => {
+
+      video.currentTime = 0;
+
       try {
-        video.currentTime = 0;
         await video.play();
-      } catch (error) {
-        console.log(error);
+      } catch (e) {
+        console.log("video play:", e);
       }
+
+      sound.style.display = "block";
     });
 
     scene.addEventListener("targetLost", () => {
       video.pause();
+      sound.style.display = "none";
+    });
+
+    soundBtn.addEventListener("click", async () => {
+
+      video.muted = false;
+
+      try {
+        await video.play();
+        sound.style.display = "none";
+      } catch (e) {
+        console.log("sound play:", e);
+      }
     });
   </script>
 
