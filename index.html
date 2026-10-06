@@ -11,25 +11,25 @@
     body {
       margin: 0;
       overflow: hidden;
+      background: black;
       font-family: sans-serif;
     }
 
     #start {
       position: fixed;
       inset: 0;
-      z-index: 10;
+      z-index: 100;
       display: flex;
       align-items: center;
       justify-content: center;
       background: #111;
     }
 
-    #start button,
-    #sound button {
-      border: none;
+    #start button {
+      padding: 16px 28px;
+      font-size: 20px;
+      border: 0;
       border-radius: 14px;
-      padding: 15px 25px;
-      font-size: 18px;
     }
 
     #sound {
@@ -37,119 +37,140 @@
       bottom: 30px;
       left: 0;
       right: 0;
-      z-index: 20;
+      z-index: 200;
       text-align: center;
       display: none;
+    }
+
+    #sound button {
+      padding: 14px 24px;
+      font-size: 18px;
+      border: 0;
+      border-radius: 14px;
     }
   </style>
 </head>
 
 <body>
 
-  <div id="start">
-    <button id="startBtn">شروع AR</button>
-  </div>
+<div id="start">
+  <button id="startBtn">شروع AR</button>
+</div>
 
-  <div id="sound">
-    <button id="soundBtn">🔊 پخش صدا</button>
-  </div>
+<div id="sound">
+  <button id="soundBtn">🔊 پخش صدا</button>
+</div>
 
-  <a-scene
-    mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: yes; uiError: yes"
-    color-space="sRGB"
-    renderer="colorManagement: true, physicallyCorrectLights: true"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
+<a-scene
+  mindar-image="
+    imageTargetSrc: ./targets.mind;
+    autoStart: false;
+    uiLoading: no;
+    uiScanning: yes;
+    uiError: yes
+  "
+  renderer="colorManagement: true"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false">
 
-    <a-assets>
-      <video
-        id="video"
-        src="./video.mp4"
-        preload="auto"
-        playsinline
-        webkit-playsinline
-        muted>
-      </video>
-    </a-assets>
+  <a-assets>
+    <video
+      id="video"
+      src="./video.mp4"
+      preload="auto"
+      muted
+      playsinline
+      webkit-playsinline>
+    </video>
+  </a-assets>
 
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <a-camera
+    position="0 0 0"
+    look-controls="enabled: false">
+  </a-camera>
 
-    <a-entity mindar-image-target="targetIndex: 0">
+  <a-entity mindar-image-target="targetIndex: 0">
 
-      <a-plane
-        width="1"
-        height="0.5625"
-        position="0 0 0"
-        material="shader: flat; src: #video; side: double">
-      </a-plane>
+    <a-plane
+      id="videoPlane"
+      width="1"
+      height="0.5625"
+      position="0 0 0"
+      material="shader: flat; side: double; src: #video">
+    </a-plane>
 
-    </a-entity>
+  </a-entity>
 
-  </a-scene>
+</a-scene>
 
-  <script>
-    const scene = document.querySelector("a-scene");
-    const video = document.querySelector("#video");
-    const start = document.querySelector("#start");
-    const startBtn = document.querySelector("#startBtn");
-    const sound = document.querySelector("#sound");
-    const soundBtn = document.querySelector("#soundBtn");
+<script>
+  const scene = document.querySelector("a-scene");
+  const video = document.querySelector("#video");
+  const start = document.querySelector("#start");
+  const startBtn = document.querySelector("#startBtn");
+  const sound = document.querySelector("#sound");
+  const soundBtn = document.querySelector("#soundBtn");
+  const plane = document.querySelector("#videoPlane");
 
-    startBtn.addEventListener("click", async () => {
+  video.muted = true;
+  video.playsInline = true;
 
-      video.muted = true;
-      video.playsInline = true;
+  startBtn.addEventListener("click", async () => {
 
-      video.load();
+    start.style.display = "none";
 
-      // اجازه پخش ویدئو را با لمس کاربر فعال می‌کنیم
-      try {
-        await video.play();
-        video.pause();
-        video.currentTime = 0;
-      } catch (e) {
-        console.log("video unlock:", e);
-      }
+    video.load();
 
-      start.style.display = "none";
-
-      const arSystem = scene.systems["mindar-image-system"];
-
-      if (arSystem) {
-        arSystem.start();
-      }
-    });
-
-    scene.addEventListener("targetFound", async () => {
-
-      video.currentTime = 0;
-
-      try {
-        await video.play();
-      } catch (e) {
-        console.log("video play:", e);
-      }
-
-      sound.style.display = "block";
-    });
-
-    scene.addEventListener("targetLost", () => {
+    try {
+      await video.play();
       video.pause();
+      video.currentTime = 0;
+    } catch (e) {
+      console.log(e);
+    }
+
+    const arSystem = scene.systems["mindar-image-system"];
+
+    if (arSystem) {
+      arSystem.start();
+    }
+  });
+
+  scene.addEventListener("targetFound", async () => {
+
+    plane.setAttribute(
+      "material",
+      "shader: flat; side: double; src: #video"
+    );
+
+    video.currentTime = 0;
+
+    try {
+      await video.play();
+    } catch (e) {
+      console.log(e);
+    }
+
+    sound.style.display = "block";
+  });
+
+  scene.addEventListener("targetLost", () => {
+    video.pause();
+    sound.style.display = "none";
+  });
+
+  soundBtn.addEventListener("click", async () => {
+
+    video.muted = false;
+
+    try {
+      await video.play();
       sound.style.display = "none";
-    });
-
-    soundBtn.addEventListener("click", async () => {
-
-      video.muted = false;
-
-      try {
-        await video.play();
-        sound.style.display = "none";
-      } catch (e) {
-        console.log("sound play:", e);
-      }
-    });
-  </script>
+    } catch (e) {
+      console.log(e);
+    }
+  });
+</script>
 
 </body>
 </html>
